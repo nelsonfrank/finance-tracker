@@ -1,1 +1,4 @@
 bin/
+
+# env file
+.env
