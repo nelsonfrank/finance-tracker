@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
+	"golang.org/x/oauth2"
 )
 
 type application struct {
@@ -16,8 +17,9 @@ type application struct {
 }
 
 type config struct {
-	addr string
-	db   dbConfig
+	addr  string
+	db    dbConfig
+	oAuth oAuthConfig
 }
 
 type dbConfig struct {
@@ -25,6 +27,10 @@ type dbConfig struct {
 	maxOpenConns int
 	maxIdleConns int
 	maxIdleTime  string
+}
+
+type oAuthConfig struct {
+	google *oauth2.Config
 }
 
 func (app *application) mount() http.Handler {
@@ -42,6 +48,11 @@ func (app *application) mount() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
+
+		r.Route("/auth", func(r chi.Router) {
+			r.Get("/google", app.oAuthHandler)
+			r.Get("/google/callback", app.oAuthCallbackHandler)
+		})
 	})
 	return r
 }
