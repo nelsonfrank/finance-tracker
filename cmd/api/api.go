@@ -7,21 +7,24 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/nelsonfrank/finance-tracker/internal/auth"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 )
 
 type application struct {
-	config config
-	store  store.Storage
-	db     *gorm.DB
+	config        config
+	store         store.Storage
+	db            *gorm.DB
+	authenticator auth.Authenticator
 }
 
 type config struct {
 	addr  string
 	db    dbConfig
 	oAuth oAuthConfig
+	mfa   mfaConfig
 }
 
 type dbConfig struct {
@@ -33,6 +36,16 @@ type dbConfig struct {
 
 type oAuthConfig struct {
 	google *oauth2.Config
+}
+
+type mfaConfig struct {
+	token jwtToken
+}
+
+type jwtToken struct {
+	secret string
+	iss    string
+	exp    time.Duration
 }
 
 func (app *application) mount() http.Handler {
@@ -60,6 +73,11 @@ func (app *application) mount() http.Handler {
 			r.Post("/register", app.register)
 			r.Post("/login", app.login)
 			r.Post("/logout", app.logout)
+		})
+
+		r.Route("/dashboard", func(r chi.Router) {
+			r.Use(app.AuthTokenMiddleware)
+			r.Get("/", app.dashboardHandler)
 		})
 	})
 	return r

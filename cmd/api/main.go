@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	"time"
 
+	"github.com/nelsonfrank/finance-tracker/internal/auth"
 	"github.com/nelsonfrank/finance-tracker/internal/db"
 	"github.com/nelsonfrank/finance-tracker/internal/env"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
@@ -29,6 +31,12 @@ func main() {
 				Endpoint:     google.Endpoint,
 			},
 		},
+		mfa: mfaConfig{
+			token: jwtToken{
+				secret: env.GetString("JWT_SECRET", ""),
+				exp:    time.Hour * 24 * 3,
+				iss:    "financial-tracker"},
+		},
 	}
 
 	db, err := db.New(cfg.db.addr, cfg.db.maxOpenConns, cfg.db.maxIdleConns, cfg.db.maxIdleTime)
@@ -39,10 +47,17 @@ func main() {
 	log.Printf("database connection pool established")
 
 	store := store.NewStorage(db)
+
+	jwtAuthenticator := auth.NewJWTAuthenticator(
+		cfg.mfa.token.secret,
+		cfg.mfa.token.iss,
+		cfg.mfa.token.iss,
+	)
 	app := &application{
-		config: cfg,
-		store:  store,
-		db:     db,
+		config:        cfg,
+		store:         store,
+		db:            db,
+		authenticator: jwtAuthenticator,
 	}
 
 	mux := app.mount()

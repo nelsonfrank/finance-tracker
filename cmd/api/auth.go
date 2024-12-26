@@ -10,7 +10,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/nelsonfrank/finance-tracker/internal/db/model"
-	"github.com/nelsonfrank/finance-tracker/internal/env"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
@@ -118,22 +117,23 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate JWT token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"email":   user.Email,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
-	})
+	claims := jwt.MapClaims{
+		"sub": user.ID,
+		"exp": time.Now().Add(app.config.mfa.token.exp).Unix(),
+		"iat": time.Now().Unix(),
+		"nbf": time.Now().Unix(),
+		"iss": app.config.mfa.token.iss,
+		"aud": app.config.mfa.token.iss,
+	}
+	token, err := app.authenticator.GenerateToken(claims)
 
-	salt := env.GetString("JWT_SECRET", "")
-	// Sign token with secret key
-	tokenString, err := token.SignedString([]byte(salt))
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Error generating token")
 		return
 	}
 
 	writeJSON(w, http.StatusOK, &LoginResponse{
-		tokenString,
+		token,
 		user,
 	})
 
