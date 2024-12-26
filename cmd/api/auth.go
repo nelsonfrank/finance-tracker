@@ -34,9 +34,13 @@ type LoginUserPayload struct {
 	Password string `json:"password" validate:"required,min=3,max=72"`
 }
 
+type RefreshTokenPayload struct {
+	RefreshToken string `json:"refresh_token" validate:"required"`
+}
 type LoginResponse struct {
-	Token string     `json:"token"`
-	User  model.User `json:"user"`
+	Token        string     `json:"access_token"`
+	RefreshToken string     `json:"refresh_token"`
+	User         model.User `json:"user"`
 }
 
 func (app *application) register(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +120,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate JWT token
+	// Generate JWT Access token
 	claims := jwt.MapClaims{
 		"sub": user.ID,
 		"exp": time.Now().Add(app.config.mfa.token.exp).Unix(),
@@ -125,15 +129,31 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		"iss": app.config.mfa.token.iss,
 		"aud": app.config.mfa.token.iss,
 	}
-	token, err := app.authenticator.GenerateToken(claims)
+	accessToken, err := app.authenticator.GenerateToken(claims)
 
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Error generating token")
 		return
 	}
 
+	// Generate JWT Refresh token
+	refreshTokenClaims := jwt.MapClaims{
+		"sub": user.ID,
+		"exp": time.Now().Add(app.config.mfa.token.refreshTokenExp).Unix(),
+		"iat": time.Now().Unix(),
+		"nbf": time.Now().Unix(),
+		"iss": app.config.mfa.token.iss,
+		"aud": app.config.mfa.token.iss,
+	}
+	refreshToken, err := app.authenticator.GenerateToken(refreshTokenClaims)
+
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Error generating token")
+		return
+	}
 	writeJSON(w, http.StatusOK, &LoginResponse{
-		token,
+		accessToken,
+		refreshToken,
 		user,
 	})
 

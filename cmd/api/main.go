@@ -33,9 +33,10 @@ func main() {
 		},
 		mfa: mfaConfig{
 			token: jwtToken{
-				secret: env.GetString("JWT_SECRET", ""),
-				exp:    time.Hour * 24 * 3,
-				iss:    "financial-tracker"},
+				secret:          env.GetString("JWT_SECRET", ""),
+				refreshTokenExp: time.Hour * 24 * 3,
+				exp:             time.Second * 5,
+				iss:             "financial-tracker"},
 		},
 	}
 

@@ -43,9 +43,10 @@ type mfaConfig struct {
 }
 
 type jwtToken struct {
-	secret string
-	iss    string
-	exp    time.Duration
+	secret          string
+	iss             string
+	exp             time.Duration
+	refreshTokenExp time.Duration
 }
 
 func (app *application) mount() http.Handler {
