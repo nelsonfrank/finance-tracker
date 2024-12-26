@@ -50,8 +50,14 @@ func (app *application) mount() http.Handler {
 		r.Get("/health", app.healthCheckHandler)
 
 		r.Route("/auth", func(r chi.Router) {
+			// google OAuth2
 			r.Get("/google", app.oAuthHandler)
 			r.Get("/google/callback", app.oAuthCallbackHandler)
+
+			// MFA
+			r.Post("/register", app.register)
+			r.Post("/login", app.login)
+			r.Post("/logout", app.logout)
 		})
 	})
 	return r
