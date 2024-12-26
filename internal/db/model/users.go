@@ -1,12 +1,12 @@
-package store
+package model
 
 import (
-	"context"
 	"time"
 
 	"gorm.io/gorm"
 )
 
+// User model for database
 type User struct {
 	gorm.Model
 	FirstName string    `json:"first_name"`
@@ -15,13 +15,4 @@ type User struct {
 	Password  string    `gorm:"not null" json:"-"`
 	CreatedAt time.Time `gorm:"type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP"`
 	UpdatedAt time.Time `gorm:"type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP"`
-}
-
-type UsersStorage struct {
-	db *gorm.DB
-}
-
-func (s *UsersStorage) Create(ctx context.Context, user *User) error {
-
-	return nil
 }

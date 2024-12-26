@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/nelsonfrank/finance-tracker/internal/store"
+	"github.com/nelsonfrank/finance-tracker/internal/db/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -28,7 +28,7 @@ func New(addr string, maxOpenConns, maxIdleConns int, maxIdleTime string) (*gorm
 	}
 
 	// Auto migrate the schema
-	db.AutoMigrate(&store.User{})
+	db.AutoMigrate(&model.User{})
 
 	return db, nil
 }

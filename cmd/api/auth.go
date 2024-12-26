@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/nelsonfrank/finance-tracker/internal/db/model"
 	"github.com/nelsonfrank/finance-tracker/internal/env"
-	"github.com/nelsonfrank/finance-tracker/internal/store"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
@@ -37,7 +37,7 @@ type LoginUserPayload struct {
 
 type LoginResponse struct {
 	Token string     `json:"token"`
-	User  store.User `json:"user"`
+	User  model.User `json:"user"`
 }
 
 func (app *application) register(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +55,7 @@ func (app *application) register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user already exists
-	var existingUser store.User
+	var existingUser model.User
 	result := app.db.Where("email = ?", payload.Email).First(&existingUser)
 	if result.RowsAffected > 0 {
 		http.Error(w, "User already exists", http.StatusConflict)
@@ -70,7 +70,7 @@ func (app *application) register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create new user
-	user := store.User{
+	user := model.User{
 		Email:     payload.Email,
 		Password:  string(hashedPassword),
 		FirstName: payload.FirstName,
@@ -100,7 +100,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user store.User
+	var user model.User
 	result := app.db.Where("email = ?", payload.Email).First(&user)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
