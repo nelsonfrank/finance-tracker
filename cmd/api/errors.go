@@ -2,9 +2,6 @@ package main
 
 import (
 	"net/http"
-	"strings"
-
-	"github.com/go-playground/validator/v10"
 )
 
 func (app *application) internalServerError(w http.ResponseWriter, r *http.Request, err error) {
@@ -57,18 +54,4 @@ func (app *application) rateLimitExceededResponse(w http.ResponseWriter, r *http
 	w.Header().Set("Retry-After", retryAfter)
 
 	writeJSONError(w, http.StatusTooManyRequests, "rate limit exceeded, retry after: "+retryAfter)
-}
-
-func (app *application) validationErrorFormatter(err error) []ValidationError {
-	var validationErrors []ValidationError
-
-	for _, err := range err.(validator.ValidationErrors) {
-		// Convert each validation error into our custom format
-		validationErrors = append(validationErrors, ValidationError{
-			Field: strings.ToLower(err.Field()),
-			Error: GetValidationErrorMsg(err),
-		})
-	}
-
-	return validationErrors
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -74,4 +75,18 @@ func writeJSONError(w http.ResponseWriter, status int, message string) error {
 	}
 
 	return writeJSON(w, status, &envelope{Error: message})
+}
+
+func (app *application) validationErrorFormatter(err error) []ValidationError {
+	var validationErrors []ValidationError
+
+	for _, err := range err.(validator.ValidationErrors) {
+		// Convert each validation error into our custom format
+		validationErrors = append(validationErrors, ValidationError{
+			Field: strings.ToLower(err.Field()),
+			Error: GetValidationErrorMsg(err),
+		})
+	}
+
+	return validationErrors
 }
