@@ -107,7 +107,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusUnauthorized, "Invalid credentials")
 			return
 		}
-		writeJSONError(w, http.StatusInternalServerError, "Error processing request")
+		app.internalServerError(w, r, result.Error)
 		return
 	}
 
