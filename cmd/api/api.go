@@ -9,11 +9,13 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
 	"golang.org/x/oauth2"
+	"gorm.io/gorm"
 )
 
 type application struct {
 	config config
 	store  store.Storage
+	db     *gorm.DB
 }
 
 type config struct {

@@ -2,12 +2,12 @@ package store
 
 import (
 	"context"
-	"database/sql"
 
-	"github.com/lib/pq"
+	"gorm.io/gorm"
 )
 
 type Post struct {
+	gorm.Model
 	ID        int64    `json:"id"`
 	Content   string   `json:"content"`
 	Title     string   `json:"title"`
@@ -17,31 +17,10 @@ type Post struct {
 	UpdatedAt string   `json:"updated_at"`
 }
 type PostsStorage struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 func (s *PostsStorage) Create(ctx context.Context, post *Post) error {
-	query := `
-	INSERT INTO posts (content, title, user_id, tags)
-	VALUES ($1, $2, $3, $4) RETURN id, created_at, updated_at
-	`
-
-	err := s.db.QueryRowContext(
-		ctx,
-		query,
-		post.Content,
-		post.Title,
-		post.UserId,
-		pq.Array(post.Tags),
-	).Scan(
-		&post.ID,
-		&post.CreatedAt,
-		&post.UpdatedAt,
-	)
-
-	if err != nil {
-		return err
-	}
 
 	return nil
 }

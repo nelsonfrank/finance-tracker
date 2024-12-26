@@ -1,32 +1,34 @@
 package db
 
 import (
-	"context"
-	"database/sql"
-	"time"
+	"github.com/nelsonfrank/finance-tracker/internal/store"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-func New(addr string, maxOpenConns, maxIdleConns int, maxIdleTime string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", addr)
+var db *gorm.DB
+
+// func init() {
+// 	// Initialize database connection
+// 	dsn := env.GetString("DB_ADDR", "postgres://admin:adminpassword@localhost:5438/finance-tracker?sslmode=disable")
+// 	var err error
+// 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+// 	if err != nil {
+// 		log.Fatal("Failed to connect to database:", err)
+// 	}
+
+//		// Auto migrate the schema
+//		db.AutoMigrate(&model.User{})
+//	}
+func New(addr string, maxOpenConns, maxIdleConns int, maxIdleTime string) (*gorm.DB, error) {
+	var err error
+	db, err = gorm.Open(postgres.Open(addr), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxOpenConns(maxOpenConns)
-	db.SetMaxIdleConns(maxIdleConns)
-
-	duration, err := time.ParseDuration(maxIdleTime)
-	if err != nil {
-		return nil, err
-	}
-	db.SetConnMaxIdleTime(duration)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err = db.PingContext(ctx); err != nil {
-		return nil, err
-	}
+	// Auto migrate the schema
+	db.AutoMigrate(&store.User{})
 
 	return db, nil
 }

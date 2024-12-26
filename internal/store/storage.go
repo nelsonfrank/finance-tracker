@@ -2,7 +2,8 @@ package store
 
 import (
 	"context"
-	"database/sql"
+
+	"gorm.io/gorm"
 )
 
 type Storage struct {
@@ -14,7 +15,7 @@ type Storage struct {
 	}
 }
 
-func NewStorage(db *sql.DB) Storage {
+func NewStorage(db *gorm.DB) Storage {
 	return Storage{
 		Posts: &PostsStorage{db},
 		Users: &UsersStorage{db},

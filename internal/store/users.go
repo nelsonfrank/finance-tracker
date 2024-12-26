@@ -2,41 +2,27 @@ package store
 
 import (
 	"context"
-	"database/sql"
+	"time"
+
+	"gorm.io/gorm"
 )
 
 type User struct {
-	ID        int64  `json:"id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Password  string `json:"-"`
-	CreatedAt string `json:"created_at"`
+	gorm.Model
+	ID        int64     `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `gorm:"uniqueIndex;not null" json:"email"`
+	Password  string    `gorm:"not null" json:"-"`
+	CreatedAt time.Time `gorm:"type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP"`
+	UpdatedAt time.Time `gorm:"type:timestamp with time zone;not null;default:CURRENT_TIMESTAMP"`
 }
 
 type UsersStorage struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 func (s *UsersStorage) Create(ctx context.Context, user *User) error {
-	query := `
-	INSERT INTO posts (username, password, email)
-	VALUES ($1, $2, $3) RETURN id, created_at
-	`
-
-	err := s.db.QueryRowContext(
-		ctx,
-		query,
-		user.Username,
-		user.Password,
-		user.Email,
-	).Scan(
-		&user.ID,
-		&user.CreatedAt,
-	)
-
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
