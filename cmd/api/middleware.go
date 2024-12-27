@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,7 +28,6 @@ func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
 		jwtToken, err := app.authenticator.ValidateToken(token)
 		if err != nil {
 			app.unauthorizedErrorResponse(w, r, err)
-			log.Println(err)
 			return
 		}
 
