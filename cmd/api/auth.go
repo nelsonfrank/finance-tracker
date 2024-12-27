@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -34,13 +35,17 @@ type LoginUserPayload struct {
 	Password string `json:"password" validate:"required,min=3,max=72"`
 }
 
-type RefreshTokenPayload struct {
-	RefreshToken string `json:"refresh_token" validate:"required"`
-}
 type LoginResponse struct {
 	Token        string     `json:"access_token"`
 	RefreshToken string     `json:"refresh_token"`
 	User         model.User `json:"user"`
+}
+
+type RefreshTokenPayload struct {
+	RefreshToken string `json:"refresh_token"`
+}
+type RefreshTokenResponse struct {
+	AccessToken string `json:"access_token"`
 }
 
 func (app *application) register(w http.ResponseWriter, r *http.Request) {
@@ -161,6 +166,55 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) logout(w http.ResponseWriter, r *http.Request) {
 
+}
+
+func (app *application) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var payload RefreshTokenPayload
+	if err := readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(payload); err != nil {
+		validationErrors := app.validationErrorFormatter(err)
+
+		sendError(w, http.StatusBadRequest, validationErrors)
+		return
+	}
+
+	jwtToken, err := app.authenticator.ValidateToken(payload.RefreshToken)
+	if err != nil {
+		app.unauthorizedErrorResponse(w, r, err)
+		return
+	}
+
+	claims, _ := jwtToken.Claims.(jwt.MapClaims)
+
+	userID, err := strconv.ParseInt(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
+	if err != nil {
+		app.unauthorizedErrorResponse(w, r, err)
+		return
+	}
+
+	// Generate JWT Access token
+	newClaims := jwt.MapClaims{
+		"sub": userID,
+		"exp": time.Now().Add(app.config.mfa.token.exp).Unix(),
+		"iat": time.Now().Unix(),
+		"nbf": time.Now().Unix(),
+		"iss": app.config.mfa.token.iss,
+		"aud": app.config.mfa.token.iss,
+	}
+	accessToken, err := app.authenticator.GenerateToken(newClaims)
+
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Error generating token")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, &RefreshTokenResponse{
+		accessToken,
+	})
 }
 
 // google OAuth2
