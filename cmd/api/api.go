@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nelsonfrank/finance-tracker/internal/auth"
+	"github.com/nelsonfrank/finance-tracker/internal/mailer"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
@@ -18,13 +19,17 @@ type application struct {
 	store         store.Storage
 	db            *gorm.DB
 	authenticator auth.Authenticator
+	mailer        mailer.Client
 }
 
 type config struct {
-	addr  string
-	db    dbConfig
-	oAuth oAuthConfig
-	mfa   mfaConfig
+	addr        string
+	frontendURL string
+	env         string
+	db          dbConfig
+	oAuth       oAuthConfig
+	mfa         mfaConfig
+	mail        mailConfig
 }
 
 type dbConfig struct {
@@ -47,6 +52,21 @@ type jwtToken struct {
 	iss             string
 	exp             time.Duration
 	refreshTokenExp time.Duration
+}
+
+type mailConfig struct {
+	sendGrid  sendGridConfig
+	mailTrap  mailTrapConfig
+	fromEmail string
+	exp       time.Duration
+}
+
+type mailTrapConfig struct {
+	apiKey string
+}
+
+type sendGridConfig struct {
+	apiKey string
 }
 
 func (app *application) mount() http.Handler {
