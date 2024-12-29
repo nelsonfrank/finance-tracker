@@ -9,6 +9,7 @@ import (
 	"github.com/nelsonfrank/finance-tracker/internal/env"
 	"github.com/nelsonfrank/finance-tracker/internal/mailer"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -53,12 +54,16 @@ func main() {
 		},
 	}
 
+	// Logger
+	logger := zap.Must(zap.NewProduction()).Sugar()
+	defer logger.Sync()
+
 	db, err := db.New(cfg.db.addr, cfg.db.maxOpenConns, cfg.db.maxIdleConns, cfg.db.maxIdleTime)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
-	log.Printf("database connection pool established")
+	logger.Info("database connection pool established")
 
 	store := store.NewStorage(db)
 
@@ -81,6 +86,7 @@ func main() {
 		db:            db,
 		authenticator: jwtAuthenticator,
 		mailer:        mailtrap,
+		logger:        logger,
 	}
 
 	mux := app.mount()

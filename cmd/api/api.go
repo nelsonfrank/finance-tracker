@@ -10,6 +10,7 @@ import (
 	"github.com/nelsonfrank/finance-tracker/internal/auth"
 	"github.com/nelsonfrank/finance-tracker/internal/mailer"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 )
@@ -20,6 +21,7 @@ type application struct {
 	db            *gorm.DB
 	authenticator auth.Authenticator
 	mailer        mailer.Client
+	logger        *zap.SugaredLogger
 }
 
 type config struct {

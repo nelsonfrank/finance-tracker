@@ -16,6 +16,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
@@ -32,6 +33,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/sendgrid/sendgrid-go v3.16.0+incompatible
+	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.24.0 // indirect
 	gopkg.in/mail.v2 v2.3.1
 )
