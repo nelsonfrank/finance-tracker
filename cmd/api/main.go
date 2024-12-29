@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"time"
 
 	"github.com/nelsonfrank/finance-tracker/internal/auth"
@@ -77,7 +76,7 @@ func main() {
 	// mailer := mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
 	mailtrap, err := mailer.NewMailTrapClient(cfg.mail.mailTrap.apiKey, cfg.mail.fromEmail)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	app := &application{
@@ -91,5 +90,5 @@ func main() {
 
 	mux := app.mount()
 
-	log.Fatal((app.run(mux)))
+	logger.Fatal((app.run(mux)))
 }
