@@ -36,9 +36,7 @@ type LoginUserPayload struct {
 }
 
 type LoginResponse struct {
-	Token        string     `json:"access_token"`
-	RefreshToken string     `json:"refresh_token"`
-	User         model.User `json:"user"`
+	User model.User `json:"user"`
 }
 
 type RefreshTokenPayload struct {
@@ -126,14 +124,13 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate JWT Access token
-	claims := jwt.MapClaims{
-		"sub": user.ID,
-		"exp": time.Now().Add(app.config.mfa.token.exp).Unix(),
-		"iat": time.Now().Unix(),
-		"nbf": time.Now().Unix(),
-		"iss": app.config.mfa.token.iss,
-		"aud": app.config.mfa.token.iss,
-	}
+	claims := app.authenticator.JwtClaimGenerator(
+		user.ID,
+		app.config.mfa.token.exp,
+		app.config.mfa.token.iss,
+		app.config.mfa.token.iss,
+	)
+
 	accessToken, err := app.authenticator.GenerateToken(claims)
 
 	if err != nil {
@@ -142,23 +139,38 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate JWT Refresh token
-	refreshTokenClaims := jwt.MapClaims{
-		"sub": user.ID,
-		"exp": time.Now().Add(app.config.mfa.token.refreshTokenExp).Unix(),
-		"iat": time.Now().Unix(),
-		"nbf": time.Now().Unix(),
-		"iss": app.config.mfa.token.iss,
-		"aud": app.config.mfa.token.iss,
-	}
+	refreshTokenClaims := app.authenticator.JwtClaimGenerator(
+		user.ID,
+		app.config.mfa.token.refreshTokenExp,
+		app.config.mfa.token.iss,
+		app.config.mfa.token.iss)
+
 	refreshToken, err := app.authenticator.GenerateToken(refreshTokenClaims)
 
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Error generating token")
 		return
 	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    accessToken,
+		Path:     "/",
+		Expires:  time.Now().Add(app.config.mfa.token.exp),
+		HttpOnly: false,
+		Secure:   false, // Set to true in production (requires HTTPS)
+		SameSite: http.SameSiteNoneMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/",
+		Expires:  time.Now().Add(app.config.mfa.token.refreshTokenExp),
+		HttpOnly: true,
+		Secure:   false, // Set to true in production (requires HTTPS)
+		SameSite: http.SameSiteNoneMode,
+	})
 	writeJSON(w, http.StatusOK, &LoginResponse{
-		accessToken,
-		refreshToken,
 		user,
 	})
 
