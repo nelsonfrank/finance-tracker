@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -40,4 +41,17 @@ func (a *JWTAuthenticator) ValidateToken(token string) (*jwt.Token, error) {
 		jwt.WithIssuer(a.aud),
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
 	)
+}
+
+func (a *JWTAuthenticator) JwtClaimGenerator(sub uint, exp time.Duration, iss, aud string) jwt.Claims {
+	claims := jwt.MapClaims{
+		"sub": sub,
+		"exp": time.Now().Add(exp).Unix(),
+		"iat": time.Now().Unix(),
+		"nbf": time.Now().Unix(),
+		"iss": iss,
+		"aud": aud,
+	}
+
+	return claims
 }
