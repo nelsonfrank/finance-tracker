@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -36,7 +35,9 @@ type LoginUserPayload struct {
 }
 
 type LoginResponse struct {
-	User model.User `json:"user"`
+	Token        string     `json:"access_token"`
+	RefreshToken string     `json:"refresh_token"`
+	User         model.User `json:"user"`
 }
 
 type RefreshTokenPayload struct {
@@ -151,26 +152,10 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "Error generating token")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access_token",
-		Value:    accessToken,
-		Path:     "/",
-		Expires:  time.Now().Add(app.config.mfa.token.exp),
-		HttpOnly: false,
-		Secure:   false, // Set to true in production (requires HTTPS)
-		SameSite: http.SameSiteNoneMode,
-	})
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		Path:     "/",
-		Expires:  time.Now().Add(app.config.mfa.token.refreshTokenExp),
-		HttpOnly: true,
-		Secure:   false, // Set to true in production (requires HTTPS)
-		SameSite: http.SameSiteNoneMode,
-	})
 	writeJSON(w, http.StatusOK, &LoginResponse{
+		accessToken,
+		refreshToken,
 		user,
 	})
 
@@ -181,36 +166,12 @@ func (app *application) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
-	var payload RefreshTokenPayload
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
 
-	if err := Validate.Struct(payload); err != nil {
-		validationErrors := app.validationErrorFormatter(err)
-
-		sendError(w, http.StatusBadRequest, validationErrors)
-		return
-	}
-
-	jwtToken, err := app.authenticator.ValidateToken(payload.RefreshToken)
-	if err != nil {
-		app.unauthorizedErrorResponse(w, r, err)
-		return
-	}
-
-	claims, _ := jwtToken.Claims.(jwt.MapClaims)
-
-	userID, err := strconv.ParseInt(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
-	if err != nil {
-		app.unauthorizedErrorResponse(w, r, err)
-		return
-	}
+	user := getUserFromContext(r)
 
 	// Generate JWT Access token
 	newClaims := jwt.MapClaims{
-		"sub": userID,
+		"sub": user.ID,
 		"exp": time.Now().Add(app.config.mfa.token.exp).Unix(),
 		"iat": time.Now().Unix(),
 		"nbf": time.Now().Unix(),
