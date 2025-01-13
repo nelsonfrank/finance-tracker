@@ -7,6 +7,7 @@ export const env = createEnv({
       .enum(["development", "test", "production"])
       .default("development"),
     API_BASE_URL: z.string().url(),
+    APP_BASE_URL: z.string().url(),
   },
 
   experimental__runtimeEnv: process.env,
