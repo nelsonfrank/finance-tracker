@@ -111,7 +111,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 	result := app.db.Where("email = ?", payload.Email).First(&user)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			writeJSONError(w, http.StatusUnauthorized, "Invalid credentials")
+			writeJSONError(w, http.StatusBadRequest, "Invalid credentials")
 			return
 		}
 		app.internalServerError(w, r, result.Error)
@@ -120,7 +120,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 
 	// Check password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password)); err != nil {
-		writeJSONError(w, http.StatusUnauthorized, "Invalid credentials")
+		writeJSONError(w, http.StatusBadRequest, "Invalid credentials")
 		return
 	}
 
