@@ -22,26 +22,40 @@ import {
   FormLabel,
   FormMessage,
 } from "./ui/form";
+import Axios from "axios";
+import { useRouter } from "next/navigation";
 
 const loginFormSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8).max(100),
+  password: z.string().min(6).max(100),
 });
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
+  const router = useRouter();
   const form = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
-      email: undefined,
-      password: undefined,
+      email: "",
+      password: "",
     },
   });
 
   function onSubmit(values: z.infer<typeof loginFormSchema>) {
-    console.log(values);
+    loginAPI(values);
+  }
+
+  async function loginAPI(payload: z.infer<typeof loginFormSchema>) {
+    try {
+      const user = await Axios.post(`/api/auth/login`, payload);
+      if (user && user.data) {
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.log({ error });
+    }
   }
 
   return (

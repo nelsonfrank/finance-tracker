@@ -5,11 +5,10 @@ import * as API from "@/data/backend/api";
 export async function POST(req: NextRequest) {
   const payload = await req.json();
 
-  const cookieStore = await cookies();
-
   const response = await API.loginAPI(payload);
   const data = response.data;
 
+  const cookieStore = await cookies();
   const expirationDate = new Date();
   expirationDate.setMinutes(expirationDate.getMinutes() + 5);
 
