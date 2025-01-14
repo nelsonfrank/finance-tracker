@@ -21,11 +21,13 @@ import {
   FormControl,
   FormMessage,
 } from "./ui/form";
+import * as API from "@/data/backend/api";
+import { useRouter } from "next/navigation";
 
 const signupFormSchema = z
   .object({
-    firstName: z.string().min(2).max(100),
-    lastName: z.string().min(2).max(100),
+    first_name: z.string().min(2).max(100),
+    last_name: z.string().min(2).max(100),
     email: z.string().email(),
     password: z.string().min(8).max(100),
     confirmPassword: z.string().min(8).max(100),
@@ -39,19 +41,28 @@ export function SignupForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
+  const router = useRouter();
+
   const form = useForm<z.infer<typeof signupFormSchema>>({
     resolver: zodResolver(signupFormSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
+      first_name: "",
+      last_name: "",
       email: "",
       password: "",
       confirmPassword: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof signupFormSchema>) {
+  async function onSubmit(values: z.infer<typeof signupFormSchema>) {
     console.log(values);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { confirmPassword, ...other } = values;
+    const payload = other;
+    const res = await API.registerUserAPI(payload);
+    if (res && res.data) {
+      router.push("/auth/login");
+    }
   }
 
   return (
@@ -86,7 +97,7 @@ export function SignupForm({
                     <div className="grid gap-2">
                       <FormField
                         control={form.control}
-                        name="firstName"
+                        name="first_name"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Firstname</FormLabel>
@@ -105,7 +116,7 @@ export function SignupForm({
                     <div className="grid gap-2">
                       <FormField
                         control={form.control}
-                        name="lastName"
+                        name="last_name"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Lastname</FormLabel>
