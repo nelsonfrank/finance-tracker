@@ -84,13 +84,7 @@ func (app *application) RefreshTokenMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, _ := jwtToken.Claims.(jwt.MapClaims)
-
-		userID, err := strconv.ParseInt(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
-		if err != nil {
-			app.unauthorizedErrorResponse(w, r, err)
-			return
-		}
+		userID := app.authenticator.GetSubFromJWTToken(jwtToken)
 
 		ctx := r.Context()
 		user, err := app.getUser(ctx, userID)

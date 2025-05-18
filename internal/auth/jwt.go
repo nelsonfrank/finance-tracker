@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -17,16 +18,7 @@ func NewJWTAuthenticator(secret, aud, iss string) *JWTAuthenticator {
 	return &JWTAuthenticator{secret, iss, aud}
 }
 
-func (a *JWTAuthenticator) GenerateToken(claims jwt.Claims) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenString, err := token.SignedString([]byte(a.secret))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
-}
 
 func (a *JWTAuthenticator) ValidateToken(token string) (*jwt.Token, error) {
 	return jwt.Parse(token, func(t *jwt.Token) (any, error) {
@@ -43,6 +35,19 @@ func (a *JWTAuthenticator) ValidateToken(token string) (*jwt.Token, error) {
 	)
 }
 
+
+func (a *JWTAuthenticator) GenerateToken(claims jwt.Claims) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, err := token.SignedString([]byte(a.secret))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+
 func (a *JWTAuthenticator) JwtClaimGenerator(sub uint, exp time.Duration, iss, aud string) jwt.Claims {
 	claims := jwt.MapClaims{
 		"sub": sub,
@@ -55,3 +60,19 @@ func (a *JWTAuthenticator) JwtClaimGenerator(sub uint, exp time.Duration, iss, a
 
 	return claims
 }
+
+func (a *JWTAuthenticator) JwtTokenGenerator(sub uint, exp time.Duration, iss, aud string) (string, error) {
+	claims := a.JwtClaimGenerator(sub, exp, iss, aud)
+
+	return a.GenerateToken(claims)
+}
+
+func (a *JWTAuthenticator) GetSubFromJWTToken(token *jwt.Token) int64 {
+	claims, _ := token.Claims.(jwt.MapClaims)
+
+	userID, _:= strconv.ParseInt(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
+
+	return userID
+}
+
+
