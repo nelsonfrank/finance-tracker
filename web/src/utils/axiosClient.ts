@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { refreshTokenAPI } from "@/data/backend/api";
 import { env } from "@/env/client";
 import axios from "axios";
-import Cookies from "js-cookie";
-import { getCookie } from "./cookiesUtils";
+import { getSession, signIn } from "next-auth/react";
 
 let isRefreshing = false;
 let failedQueue: any[] = [];
@@ -20,7 +20,7 @@ const processQueue = (error: any, token: string | null = null) => {
 
 export const Axios = axios.create({
   baseURL: env.NEXT_PUBLIC_API_BASE_URL,
-  timeout: 10000, // Request timeout in milliseconds
+  timeout: 1000, 
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -29,7 +29,9 @@ export const Axios = axios.create({
 
 Axios.interceptors.request.use(
   async (config) => {
-    const token = await getCookie("access_token");
+    const session = await getSession();
+    const token = session && session.user ? session.user.access_token : "";
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -40,6 +42,7 @@ Axios.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
 Axios.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -61,15 +64,9 @@ Axios.interceptors.response.use(
 
       try {
         // Call refresh-token endpoint
-        const refreshResponse = await Axios.post(
-          "/v1/auth/refresh-token",
-          {},
-          { withCredentials: true } // Send cookies to backend
-        );
-
+        const session = await getSession();
+        const refreshResponse = await refreshTokenAPI({refresh_token: session?.user.refresh_token ?? ""})
         const newAccessToken = refreshResponse.data.access_token;
-        // Update token in cookies
-        Cookies.set("access_token", newAccessToken);
 
         // Retry failed requests
         processQueue(null, newAccessToken);
@@ -78,7 +75,6 @@ Axios.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return Axios(originalRequest);
       } catch (refreshError) {
-        console.log({ refreshError });
         // Handle token refresh failure
         processQueue(refreshError, null);
 

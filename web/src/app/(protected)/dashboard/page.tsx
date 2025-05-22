@@ -1,19 +1,23 @@
+"use client"
+import { useEffect } from "react";
 import { userDashboardAPI } from "@/data/backend/api/dashboard";
-// import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
-export default async function DashboardPage() {
-  // useEffect(() => {
-  //   fetchData();
-  // }, []);
+export default function DashboardPage() {
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  // async function fetchData() {
+  async function fetchData() {
   try {
     const data = await userDashboardAPI();
-    console.log(data.data);
+    console.log(data);
   } catch (error) {
     console.log({ error });
   }
-  // }
+  }
 
-  return <p>Protected route</p>;
+  return <div>
+    <Button onClick={fetchData}>Fetch Data</Button>
+  </div>;
 }

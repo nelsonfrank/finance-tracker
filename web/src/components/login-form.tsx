@@ -22,8 +22,10 @@ import {
   FormLabel,
   FormMessage,
 } from "./ui/form";
-import Axios from "axios";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { signIn } from 'next-auth/react'
+import { useEffect } from "react";
+import { toast } from "sonner"
 
 const loginFormSchema = z.object({
   email: z.string().email(),
@@ -34,7 +36,17 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
-  const router = useRouter();
+  const params = useSearchParams();
+
+  const errorMessage = params.get("error")
+
+
+  useEffect(()=>{
+    if (errorMessage) {
+        toast.error(errorMessage)
+    }
+}, [errorMessage])
+
   const form = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
@@ -43,21 +55,16 @@ export function LoginForm({
     },
   });
 
-  function onSubmit(values: z.infer<typeof loginFormSchema>) {
-    loginAPI(values);
+  async function onSubmit(values: z.infer<typeof loginFormSchema>) {
+    await signIn("credentials", {
+      ...values,
+      redirect: true,
+      callbackUrl: params.get("callbackUrl") || "/dashboard"
+  })
+
   }
 
-  async function loginAPI(payload: z.infer<typeof loginFormSchema>) {
-    try {
-      const user = await Axios.post(`/api/auth/login`, payload);
-      if (user && user.data) {
-        router.push("/dashboard");
-      }
-    } catch (error) {
-      console.log({ error });
-    }
-  }
-
+ 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -123,7 +130,7 @@ export function LoginForm({
                             </div>
                           </FormLabel>
                           <FormControl>
-                            <Input type="password" {...field} />
+                            <Input type="password" {...field} placeholder="Password" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
