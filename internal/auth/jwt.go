@@ -75,4 +75,11 @@ func (a *JWTAuthenticator) GetSubFromJWTToken(token *jwt.Token) int64 {
 	return userID
 }
 
+func (a *JWTAuthenticator)GetExpiresTime(expiresIn time.Duration) time.Time  {
+	now := time.Now()
+	timeToExpires := now.Add(time.Duration(expiresIn) * time.Millisecond)
+
+	return timeToExpires
+}
+
 

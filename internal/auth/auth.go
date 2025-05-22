@@ -12,4 +12,5 @@ type Authenticator interface {
 	JwtClaimGenerator(sub uint, exp time.Duration, iss, aud string) jwt.Claims
 	JwtTokenGenerator(sub uint, exp time.Duration, iss, aud string)(string, error)
 	GetSubFromJWTToken(token *jwt.Token) int64
+	GetExpiresTime(expiresIn time.Duration) time.Time 
 }

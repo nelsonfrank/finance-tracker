@@ -6,7 +6,6 @@ import (
 	"github.com/nelsonfrank/finance-tracker/internal/auth"
 	"github.com/nelsonfrank/finance-tracker/internal/db"
 	"github.com/nelsonfrank/finance-tracker/internal/env"
-	"github.com/nelsonfrank/finance-tracker/internal/mailer"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -38,7 +37,7 @@ func main() {
 			token: jwtToken{
 				secret:          env.GetString("JWT_SECRET", ""),
 				refreshTokenExp: time.Hour * 24 * 3,
-				exp:             time.Second * 5,
+				exp:             time.Minute * 15,
 				iss:             "financial-tracker"},
 		},
 		mail: mailConfig{
@@ -74,18 +73,18 @@ func main() {
 
 	// Mailer
 	// mailer := mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
-	mailtrap, err := mailer.NewMailTrapClient(cfg.mail.mailTrap.apiKey, cfg.mail.fromEmail)
-	if err != nil {
-		logger.Fatal(err)
-	}
+	// mailtrap, err := mailer.NewMailTrapClient(cfg.mail.mailTrap.apiKey, cfg.mail.fromEmail)
+	// if err != nil {
+	// 	logger.Fatal(err)
+	// }
 
 	app := &application{
 		config:        cfg,
 		store:         store,
 		db:            db,
 		authenticator: jwtAuthenticator,
-		mailer:        mailtrap,
-		logger:        logger,
+		// mailer:        mailtrap,
+		logger: logger,
 	}
 
 	mux := app.mount()

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/nelsonfrank/finance-tracker/internal/db/model"
 	"golang.org/x/crypto/bcrypt"
@@ -35,7 +36,7 @@ type LoginUserPayload struct {
 type LoginResponse struct {
 	Token        string     `json:"access_token"`
 	RefreshToken string     `json:"refresh_token"`
-	AccessTokenExpires string `json:"access_token_expires"`
+	AccessTokenExpires time.Time `json:"access_token_expires"`
 	User         model.User `json:"user"`
 }
 
@@ -44,8 +45,7 @@ type RefreshTokenPayload struct {
 }
 type RefreshTokenResponse struct {
 	AccessToken string `json:"access_token"`
-	AccessTokenExpires string `json:"access_token_expires"`
-	RefreshToken string     `json:"refresh_token"`
+	AccessTokenExpires time.Time `json:"access_token_expires"`
 }
 
 func (app *application) register(w http.ResponseWriter, r *http.Request) {
@@ -155,10 +155,12 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	accessTokenExpire := app.authenticator.GetExpiresTime(app.config.mfa.token.exp)
+
 	writeJSON(w, http.StatusOK, &LoginResponse{
 		accessToken,
 		refreshToken,
-		app.config.mfa.token.exp.String(),
+		accessTokenExpire,
 		user,
 	})
 
@@ -206,25 +208,12 @@ func (app *application) refreshTokenHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	refreshToken, err := app.authenticator.JwtTokenGenerator(
-		uint(userID),
-		app.config.mfa.token.refreshTokenExp,
-		app.config.mfa.token.iss,
-		app.config.mfa.token.iss,
-   )
 
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Error generating token")
-		return
-	}
-
-
-	accessTokenExpire := app.config.mfa.token.exp
+	accessTokenExpire := app.authenticator.GetExpiresTime(app.config.mfa.token.exp)
 
 	writeJSON(w, http.StatusOK, &RefreshTokenResponse{
 		accessToken,
-		accessTokenExpire.String(),
-		refreshToken,
+		accessTokenExpire,
 	})
 }
 
