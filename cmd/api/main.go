@@ -6,6 +6,7 @@ import (
 	"github.com/nelsonfrank/finance-tracker/internal/auth"
 	"github.com/nelsonfrank/finance-tracker/internal/db"
 	"github.com/nelsonfrank/finance-tracker/internal/env"
+	"github.com/nelsonfrank/finance-tracker/internal/mailer"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -49,6 +50,9 @@ func main() {
 			mailTrap: mailTrapConfig{
 				apiKey: env.GetString("MAILTRAP_API_KEY", ""),
 			},
+			resend: resendConfig{
+				apiKey: env.GetString("RESEND_API_KEY", ""),
+			},
 		},
 	}
 
@@ -72,19 +76,18 @@ func main() {
 	)
 
 	// Mailer
-	// mailer := mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
-	// mailtrap, err := mailer.NewMailTrapClient(cfg.mail.mailTrap.apiKey, cfg.mail.fromEmail)
-	// if err != nil {
-	// 	logger.Fatal(err)
-	// }
+	resend, err := mailer.NewResendClient(cfg.mail.resend.apiKey, cfg.mail.fromEmail)
+	if err != nil {
+		logger.Fatal(err)
+	}
 
 	app := &application{
 		config:        cfg,
 		store:         store,
 		db:            db,
 		authenticator: jwtAuthenticator,
-		// mailer:        mailtrap,
-		logger: logger,
+		mailer:        resend,
+		logger:        logger,
 	}
 
 	mux := app.mount()
