@@ -2,7 +2,6 @@ import { loginAPI, refreshTokenAPI } from "@/data/backend/api"
 import type { DefaultSession, DefaultUser, NextAuthOptions } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import Credentials from "next-auth/providers/credentials"
-import { cookies } from "next/headers"
 
 
 declare module "next-auth" {
@@ -36,11 +35,12 @@ async function refreshAccessToken(token: JWT) {
    const response = await refreshTokenAPI({refresh_token: token.refresh_token ?? ""})
     
     const { access_token, access_token_expires, refresh_token }= response.data;
+    console.log({response})
     return {
       ...token,
-      accessToken: access_token,
-      accessTokenExpires: access_token_expires,
-      refreshToken: refresh_token ?? token.refresh_token, // Fall back to old refresh token
+      access_token: access_token,
+      access_token_expires: access_token_expires,
+      refresh_token: refresh_token ?? token.refresh_token, // Fall back to old refresh token
     }
   } catch (error) {
     console.log(error)
@@ -126,19 +126,3 @@ export const authConfigs = {
   }
 }satisfies NextAuthOptions
 
-
-  export const storeHttpsOnlyToken = async (token: string, expires?: Date ) => {
-    const cookieStore = await cookies();
-  
-    const refreshTokenExpirationDate = new Date();
-  
-    refreshTokenExpirationDate.setDate(refreshTokenExpirationDate.getDate() + 7);
-   
-    cookieStore.set("refresh_token", token, {
-      path: "/",
-      expires: expires ? expires : refreshTokenExpirationDate,
-      httpOnly: true,
-      secure: true, // Set to true in production
-      sameSite: "lax",
-    });
-  };

@@ -1,22 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { refreshTokenAPI } from "@/data/backend/api";
 import { env } from "@/env/client";
 import axios from "axios";
-import { getSession, signIn } from "next-auth/react";
+import { getSession } from "next-auth/react";
 
-let isRefreshing = false;
-let failedQueue: any[] = [];
+const MAX_RETRIES = 3;
 
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (token) {
-      prom.resolve(token);
-    } else {
-      prom.reject(error);
-    }
-  });
-  failedQueue = [];
-};
 
 export const Axios = axios.create({
   baseURL: env.NEXT_PUBLIC_API_BASE_URL,
@@ -46,45 +34,39 @@ Axios.interceptors.request.use(
 Axios.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const config = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        // Queue the failed request until the refresh process completes
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return Axios(originalRequest);
-        });
+    if (!config._retryCount) config._retryCount = 0;
+
+    const status = error.response?.status;
+
+    const shouldRetry = config._retryCount < MAX_RETRIES && (!error.response || status === 401);
+
+    if (shouldRetry) {
+      config._retryCount += 1;
+
+      if (status === 401) {
+        const newSession = await getSession();
+
+        const newToken = newSession?.user?.access_token;
+
+        if (newToken) {
+          config.headers.Authorization = `Bearer ${newToken}`;
+        } else {          
+          return Promise.reject(error);
+        }
       }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+      const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+      await delay(config._retryCount * 1000);
 
-      try {
-        // Call refresh-token endpoint
-        const session = await getSession();
-        const refreshResponse = await refreshTokenAPI({refresh_token: session?.user.refresh_token ?? ""})
-        const newAccessToken = refreshResponse.data.access_token;
+      return Axios(config);
+    }
 
-        // Retry failed requests
-        processQueue(null, newAccessToken);
-
-        // Retry the original request
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return Axios(originalRequest);
-      } catch (refreshError) {
-        // Handle token refresh failure
-        processQueue(refreshError, null);
-
-        if (typeof window !== "undefined") {
-          window.location.href = "/auth/login"; // Redirect to login
-        }
-
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+    const shouldRedirect = config._retryCount > MAX_RETRIES &&  status === 401;
+    if(shouldRedirect){
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login';
       }
     }
 
