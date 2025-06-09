@@ -1,34 +1,25 @@
 package db
 
 import (
-	"github.com/nelsonfrank/finance-tracker/internal/db/model"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"context"
+	"database/sql"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 )
 
-var db *gorm.DB
-
-// func init() {
-// 	// Initialize database connection
-// 	dsn := env.GetString("DB_ADDR", "postgres://admin:adminpassword@localhost:5438/finance-tracker?sslmode=disable")
-// 	var err error
-// 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-// 	if err != nil {
-// 		log.Fatal("Failed to connect to database:", err)
-// 	}
-
-//		// Auto migrate the schema
-//		db.AutoMigrate(&model.User{})
-//	}
-func New(addr string, maxOpenConns, maxIdleConns int, maxIdleTime string) (*gorm.DB, error) {
-	var err error
-	db, err = gorm.Open(postgres.Open(addr), &gorm.Config{})
+func New(ctx context.Context, addr string) (*sqlx.DB, error) {
+	db, err := sql.Open("pgx", addr) // using "pgx" driver via stdlib
 	if err != nil {
 		return nil, err
 	}
 
-	// Auto migrate the schema
-	db.AutoMigrate(&model.User{})
+	sqlxDB := sqlx.NewDb(db, "pgx")
 
-	return db, nil
+	// Optional: Test the connection
+	if err := sqlxDB.PingContext(ctx); err != nil {
+		return nil, err
+	}
+
+	return sqlxDB, nil
 }

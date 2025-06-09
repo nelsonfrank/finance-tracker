@@ -3,15 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/nelsonfrank/finance-tracker/internal/db/model"
+	"github.com/nelsonfrank/finance-tracker/internal/repository"
+	"github.com/nelsonfrank/finance-tracker/internal/store"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
-	"gorm.io/gorm"
 )
 
 var randomState string = "random"
@@ -23,75 +22,80 @@ type ValidationError struct {
 }
 
 type RegisterUserPayload struct {
-	FirstName string `json:"first_name" validate:"required,max=100"`
-	LastName  string `json:"last_name" validate:"required,max=100"`
-	Email     string `json:"email" validate:"required,email,max=255"`
-	Password  string `json:"password" validate:"required,min=3,max=72"`
+	Username string `json:"username" validate:"required,max=100"`
+	Email    string `json:"email" validate:"required,email,max=255"`
+	Password string `json:"password" validate:"required,min=3,max=72"`
 }
 type LoginUserPayload struct {
 	Email    string `json:"email" validate:"required,email,max=100"`
 	Password string `json:"password" validate:"required,min=3,max=72"`
 }
 
+type ForgetPasswordPayload struct {
+	Email string `json:"email" validate:"required,email,max=100"`
+}
+
 type LoginResponse struct {
-	Token        string     `json:"access_token"`
-	RefreshToken string     `json:"refresh_token"`
-	AccessTokenExpires time.Time `json:"access_token_expires"`
-	User         model.User `json:"user"`
+	Token              string     `json:"access_token"`
+	RefreshToken       string     `json:"refresh_token"`
+	AccessTokenExpires time.Time  `json:"access_token_expires"`
+	User               repository.GetUserByEmailRow `json:"user"`
 }
 
 type RefreshTokenPayload struct {
-	RefreshToken  string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 type RefreshTokenResponse struct {
-	AccessToken string `json:"access_token"`
+	AccessToken        string    `json:"access_token"`
 	AccessTokenExpires time.Time `json:"access_token_expires"`
+}
+
+type UserWithToken struct {
+	*repository.User
+	Token string `json:"token"`
 }
 
 func (app *application) register(w http.ResponseWriter, r *http.Request) {
 	var payload RegisterUserPayload
 	if err := readJSON(w, r, &payload); err != nil {
-		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	if err := Validate.Struct(payload); err != nil {
-		validationErrors := app.validationErrorFormatter(err)
-
-		sendError(w, http.StatusBadRequest, validationErrors)
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	// Check if user already exists
-	var existingUser model.User
-	result := app.db.Where("email = ?", payload.Email).First(&existingUser)
-	if result.RowsAffected > 0 {
+	_, err := app.repo.GetUserByEmail(r.Context(), payload.Email)
+	if err == nil {
 		http.Error(w, "User already exists", http.StatusConflict)
 		return
 	}
 
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "Error processing request", http.StatusInternalServerError)
-		return
+		app.badRequestResponse(w, r, err)
+		return 
 	}
 
-	// Create new user
-	user := model.User{
-		Email:     payload.Email,
-		Password:  string(hashedPassword),
-		FirstName: payload.FirstName,
-		LastName:  payload.LastName,
+	newUser, err := app.repo.CreateUser(r.Context(), repository.CreateUserParams{Username: payload.Username, Email: payload.Email, Password: hash})
+	if err != nil {
+		switch err {
+		case store.ErrDuplicateEmail:
+			app.badRequestResponse(w, r, err)
+		case store.ErrDuplicateUsername:
+			app.badRequestResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
 	}
+		
 
-	if result := app.db.Create(&user); result.Error != nil {
-		http.Error(w, "Error creating user", http.StatusInternalServerError)
-		return
+	if err := app.jsonResponse(w, http.StatusCreated, newUser); err != nil {
+		app.internalServerError(w, r, err)
 	}
-
-	writeJSON(w, http.StatusCreated, user)
-
 }
 
 func (app *application) login(w http.ResponseWriter, r *http.Request) {
@@ -108,14 +112,9 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user model.User
-	result := app.db.Where("email = ?", payload.Email).First(&user)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			writeJSONError(w, http.StatusBadRequest, "Invalid credentials")
-			return
-		}
-		app.internalServerError(w, r, result.Error)
+	user, err := app.repo.GetUserByEmail(r.Context(), payload.Email)
+	if err != nil {
+		app.internalServerError(w, r, err)
 		return
 	}
 
@@ -127,7 +126,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 
 	// Generate JWT Access token
 	claims := app.authenticator.JwtClaimGenerator(
-		user.ID,
+		uint(user.ID),
 		app.config.mfa.token.exp,
 		app.config.mfa.token.iss,
 		app.config.mfa.token.iss,
@@ -142,7 +141,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 
 	// Generate JWT Refresh token
 	refreshTokenClaims := app.authenticator.JwtClaimGenerator(
-		user.ID,
+		uint(user.ID),
 		app.config.mfa.token.refreshTokenExp,
 		app.config.mfa.token.iss,
 		app.config.mfa.token.iss,
@@ -185,7 +184,7 @@ func (app *application) refreshTokenHandler(w http.ResponseWriter, r *http.Reque
 		sendError(w, http.StatusBadRequest, validationErrors)
 		return
 	}
-	
+
 	jwtToken, err := app.authenticator.ValidateToken(payload.RefreshToken)
 	if err != nil {
 		app.unauthorizedErrorResponse(w, r, err)
@@ -208,13 +207,29 @@ func (app *application) refreshTokenHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-
 	accessTokenExpire := app.authenticator.GetExpiresTime(app.config.mfa.token.exp)
 
 	writeJSON(w, http.StatusOK, &RefreshTokenResponse{
 		accessToken,
 		accessTokenExpire,
 	})
+}
+
+func (app *application) ForgetPassword(w http.ResponseWriter, r *http.Request) {
+	var payload ForgetPasswordPayload
+
+	if err := readJSON(w, r, &payload); err != nil {
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := Validate.Struct(payload); err != nil {
+		validationErrors := app.validationErrorFormatter(err)
+
+		sendError(w, http.StatusBadRequest, validationErrors)
+		return
+	}
+
 }
 
 // google OAuth2

@@ -90,3 +90,11 @@ func (app *application) validationErrorFormatter(err error) []ValidationError {
 
 	return validationErrors
 }
+
+func (app *application) jsonResponse(w http.ResponseWriter, status int, data any) error {
+	type envelope struct {
+		Data any `json:"data"`
+	}
+
+	return writeJSON(w, status, &envelope{Data: data})
+}

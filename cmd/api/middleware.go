@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nelsonfrank/finance-tracker/internal/db/model"
+	"github.com/nelsonfrank/finance-tracker/internal/repository"
 )
 
 func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
@@ -53,16 +53,14 @@ func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (app *application) getUser(ctx context.Context, userID int64) (model.User, error) {
-
-	var user model.User
-	result := app.db.Where("ID = ?", userID).First(&user)
-	if result.Error != nil {
-
-		return user, result.Error
+func (app *application) getUser(ctx context.Context, userID int64) (repository.User, error) {
+	
+	found, err := app.repo.GetUser(ctx, userID)
+	if err != nil {
+		return found, err
 	}
 
-	return user, nil
+	return found, nil
 }
 
 func (app *application) RefreshTokenMiddleware(next http.Handler) http.Handler {

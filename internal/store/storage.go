@@ -2,22 +2,41 @@ package store
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"time"
 
-	"gorm.io/gorm"
+	"github.com/jmoiron/sqlx"
 )
-
+var (
+	ErrNotFound          = errors.New("resource not found")
+	ErrConflict          = errors.New("resource already exists")
+	QueryTimeoutDuration = time.Second * 5
+)
 type Storage struct {
 	Posts interface {
 		Create(context.Context, *Post) error
 	}
-	Users interface {
-		Create(context.Context, *User) error
+
+}
+
+func NewStorage(db *sqlx.DB) Storage {
+	return Storage{
+		Posts: &PostsStorage{db},
 	}
 }
 
-func NewStorage(db *gorm.DB) Storage {
-	return Storage{
-		Posts: &PostsStorage{db},
-		Users: &UsersStorage{db},
+
+func withTx(db *sql.DB, ctx context.Context, fn func(*sql.Tx) error) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
 	}
+
+	if err := fn(tx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/nelsonfrank/finance-tracker/internal/auth"
 	"github.com/nelsonfrank/finance-tracker/internal/db"
 	"github.com/nelsonfrank/finance-tracker/internal/env"
 	"github.com/nelsonfrank/finance-tracker/internal/mailer"
+	"github.com/nelsonfrank/finance-tracker/internal/repository"
 	"github.com/nelsonfrank/finance-tracker/internal/store"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -38,7 +40,7 @@ func main() {
 			token: jwtToken{
 				secret:          env.GetString("JWT_SECRET", ""),
 				refreshTokenExp: time.Hour * 24 * 3,
-				exp:             time.Minute * 15,
+				exp:             time.Second * 5,
 				iss:             "financial-tracker"},
 		},
 		mail: mailConfig{
@@ -56,18 +58,22 @@ func main() {
 		},
 	}
 
+	ctx := context.Background()
+	
 	// Logger
 	logger := zap.Must(zap.NewProduction()).Sugar()
 	defer logger.Sync()
 
-	db, err := db.New(cfg.db.addr, cfg.db.maxOpenConns, cfg.db.maxIdleConns, cfg.db.maxIdleTime)
+	sqlxDB, err := db.New(ctx, cfg.db.addr)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
 	logger.Info("database connection pool established")
 
-	store := store.NewStorage(db)
+	store := store.NewStorage(sqlxDB)
+
+	repo := repository.New(sqlxDB.DB)
 
 	jwtAuthenticator := auth.NewJWTAuthenticator(
 		cfg.mfa.token.secret,
@@ -84,7 +90,8 @@ func main() {
 	app := &application{
 		config:        cfg,
 		store:         store,
-		db:            db,
+		repo:          repo,
+		db:            sqlxDB,
 		authenticator: jwtAuthenticator,
 		mailer:        resend,
 		logger:        logger,

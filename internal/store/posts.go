@@ -3,11 +3,10 @@ package store
 import (
 	"context"
 
-	"gorm.io/gorm"
+	"github.com/jmoiron/sqlx"
 )
 
 type Post struct {
-	gorm.Model
 	ID        int64    `json:"id"`
 	Content   string   `json:"content"`
 	Title     string   `json:"title"`
@@ -17,7 +16,7 @@ type Post struct {
 	UpdatedAt string   `json:"updated_at"`
 }
 type PostsStorage struct {
-	db *gorm.DB
+	db *sqlx.DB
 }
 
 func (s *PostsStorage) Create(ctx context.Context, post *Post) error {
