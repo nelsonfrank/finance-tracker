@@ -53,7 +53,9 @@ Axios.interceptors.response.use(
         if (newToken) {
           config.headers.Authorization = `Bearer ${newToken}`;
         } else {          
-          return Promise.reject(error);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth/login';
+          }
         }
       }
 
