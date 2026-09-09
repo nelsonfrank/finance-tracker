@@ -59,6 +59,7 @@ type jwtToken struct {
 type mailConfig struct {
 	sendGrid  sendGridConfig
 	mailTrap  mailTrapConfig
+	resend    resendConfig
 	fromEmail string
 	exp       time.Duration
 }
@@ -68,6 +69,10 @@ type mailTrapConfig struct {
 }
 
 type sendGridConfig struct {
+	apiKey string
+}
+
+type resendConfig struct {
 	apiKey string
 }
 

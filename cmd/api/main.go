@@ -50,6 +50,9 @@ func main() {
 			mailTrap: mailTrapConfig{
 				apiKey: env.GetString("MAILTRAP_API_KEY", ""),
 			},
+			resend: resendConfig{
+				apiKey: env.GetString("RESEND_API_KEY", ""),
+			},
 		},
 	}
 
@@ -74,7 +77,8 @@ func main() {
 
 	// Mailer
 	// mailer := mailer.NewSendgrid(cfg.mail.sendGrid.apiKey, cfg.mail.fromEmail)
-	mailtrap, err := mailer.NewMailTrapClient(cfg.mail.mailTrap.apiKey, cfg.mail.fromEmail)
+	// mailtrap, err := mailer.NewMailTrapClient(cfg.mail.mailTrap.apiKey, cfg.mail.fromEmail)
+	resendClient, err := mailer.NewResendClient(cfg.mail.resend.apiKey, cfg.mail.fromEmail)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -84,7 +88,7 @@ func main() {
 		store:         store,
 		db:            db,
 		authenticator: jwtAuthenticator,
-		mailer:        mailtrap,
+		mailer:        resendClient,
 		logger:        logger,
 	}
 

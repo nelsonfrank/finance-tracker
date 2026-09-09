@@ -1,0 +1,16 @@
+export ADDR=""
+export FRONTEND_URL="http://localhost:00"
+export ENV="development"
+export DB_ADDR=""
+export DB_MAX_OPEN_CONNS=
+export DB_MAX_IDLE_CONNS=
+export DB_MAX_IDLE_TIME="15m"
+export GOOGLE_CLIENT_ID=""
+export GOOGLE_CLIENT_SECRET=""
+export OAUTH_REDIRECT_URL=""
+export JWT_SECRET=""
+export FROM_EMAIL=""
+export SENDGRID_API_KEY=""
+export MAILTRAP_API_KEY=""
+export RESEND_API_KEY=""
+export RESEND_DOMAIN=""
